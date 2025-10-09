@@ -1,0 +1,521 @@
+/* ========================================
+   Corporate Professional Design System
+   ======================================== */
+
+/* CSS Variables for Corporate Color Scheme */
+:root {
+  --primary-dark: #1e3a8a;
+  --primary: #1e40af;
+  --primary-light: #2563eb;
+  --accent: #3b82f6;
+  --accent-light: #60a5fa;
+
+  --bg-main: #ffffff;
+  --bg-light: #f8fafc;
+  --bg-lighter: #f1f5f9;
+
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #64748b;
+
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================
+   Base Styles
+   ======================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-lighter);
+  min-height: 100vh;
+  padding: 32px 16px;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   Container
+   ======================================== */
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  background: var(--bg-main);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* ========================================
+   Header
+   ======================================== */
+
+header {
+  background: var(--primary-dark);
+  color: white;
+  padding: 48px 40px;
+  border-bottom: 4px solid var(--primary);
+}
+
+header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: -0.025em;
+}
+
+.subtitle {
+  font-size: 1rem;
+  opacity: 0.9;
+  font-weight: 400;
+  color: #e5e7eb;
+}
+
+/* ========================================
+   Main Content
+   ======================================== */
+
+main {
+  padding: 48px 40px;
+}
+
+.section {
+  margin-bottom: 48px;
+}
+
+.section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+/* ========================================
+   Forms
+   ======================================== */
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-group input[type="url"],
+.form-group input[type="number"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.form-group input[type="url"]:focus,
+.form-group input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+.form-group input[type="url"]::placeholder {
+  color: var(--text-muted);
+}
+
+.form-group input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* ========================================
+   Buttons
+   ======================================== */
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 2px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  margin-right: 12px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-light);
+}
+
+.btn-primary:active {
+  background: var(--primary-dark);
+}
+
+.btn-success {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-success:hover {
+  background: var(--primary-light);
+}
+
+.btn-secondary {
+  background: var(--bg-lighter);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-light);
+  border-color: var(--text-muted);
+}
+
+/* ========================================
+   Progress
+   ======================================== */
+
+.progress-container {
+  margin: 40px 0;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-lighter);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.status-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ========================================
+   Results
+   ======================================== */
+
+.result-summary {
+  text-align: center;
+  margin-bottom: 48px;
+  padding: 32px;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+}
+
+.result-summary h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.score-circle {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: var(--bg-main);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+#total-score {
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary-dark);
+}
+
+.score-label {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ========================================
+   Score Grid
+   ======================================== */
+
+.scores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.score-card {
+  padding: 24px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s;
+}
+
+.score-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.score-card h4 {
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.score-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-lighter);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.6s ease;
+}
+
+/* ========================================
+   Action Buttons
+   ======================================== */
+
+.action-buttons {
+  text-align: center;
+  margin: 40px 0;
+  padding: 24px;
+  background: var(--bg-light);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ========================================
+   Error
+   ======================================== */
+
+.error {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  padding: 24px;
+}
+
+#error-message {
+  color: #92400e;
+  margin: 16px 0;
+  line-height: 1.6;
+}
+
+/* ========================================
+   Details Section
+   ======================================== */
+
+#details-section {
+  margin-top: 48px;
+  padding: 32px;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+}
+
+#details-section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#details-content {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.detail-item {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+}
+
+.detail-item h4 {
+  color: var(--primary-dark);
+  margin-bottom: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.detail-item p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.detail-item strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.detail-item pre {
+  background: var(--bg-lighter);
+  padding: 12px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  margin-top: 8px;
+}
+
+/* ========================================
+   Footer
+   ======================================== */
+
+footer {
+  background: var(--primary-dark);
+  padding: 24px 40px;
+  text-align: center;
+  color: #e5e7eb;
+  border-top: 4px solid var(--primary);
+}
+
+footer p {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  body {
+    padding: 16px 8px;
+  }
+
+  header {
+    padding: 32px 24px;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.875rem;
+  }
+
+  main {
+    padding: 32px 24px;
+  }
+
+  .section h2 {
+    font-size: 1.25rem;
+  }
+
+  .scores-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  #total-score {
+    font-size: 3rem;
+  }
+
+  .action-buttons {
+    padding: 16px;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+
+  footer {
+    padding: 20px 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  header h1 {
+    font-size: 1.25rem;
+  }
+
+  #total-score {
+    font-size: 2.5rem;
+  }
+
+  .score-value {
+    font-size: 1.5rem;
+  }
+}
