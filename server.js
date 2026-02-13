@@ -39,6 +39,13 @@ const { aggregateResults, calculatePageTotalScore } = require('./src/aggregator'
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// レポート保存用ディレクトリの作成を確認
+const reportsDir = path.join(__dirname, 'reports');
+if (!fs.existsSync(reportsDir)) {
+  fs.mkdirSync(reportsDir, { recursive: true });
+  console.log('Reports directory created');
+}
+
 // ミドルウェア
 app.use(cors());
 app.use(express.json());
@@ -347,6 +354,10 @@ function getDefaultAverages() {
  */
 async function uploadPdfToSupabase(jobId, localPath) {
   try {
+    if (!fs.existsSync(localPath)) {
+      console.error(`[${jobId}] アップロード対象のファイルが存在しません: ${localPath}`);
+      return null;
+    }
     const fileContent = fs.readFileSync(localPath);
     const fileName = `${jobId}.pdf`;
 
