@@ -2,12 +2,11 @@
 # exit on error
 set -o errexit
 
-# npmインストール
-npm install
+# この場所（プロジェクト内）にブラウザを入れろと指示
+export PUPPETEER_CACHE_DIR=/opt/render/project/src/.cache/puppeteer
 
-# .puppeteerrc.cjs の設定に従ってChromeをインストール
-echo "Installing Chrome for Puppeteer..."
-npx puppeteer browsers install chrome
+# インストール（ここでブラウザもダウンロードされる）
+npm install
 
 # レポート保存用ディレクトリの作成
 mkdir -p reports
