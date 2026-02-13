@@ -2,12 +2,8 @@
 # exit on error
 set -o errexit
 
-# 1. ライブラリをインストール
+# npm installを実行。package.jsonのpostinstallによって自動的にブラウザも入ります。
 npm install
 
-# 2. .puppeteerrc.cjs の設定に従い、node_modules 内にブラウザをインストール
-echo "Installing Chrome into node_modules..."
-npx puppeteer browsers install chrome
-
-# 3. レポート保存用ディレクトリの作成
+# レポート保存用ディレクトリの作成
 mkdir -p reports
