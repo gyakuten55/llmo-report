@@ -1,11 +1,64 @@
 const cheerio = require('cheerio');
+const axios = require('axios');
+
+/**
+ * llms.txtの存在確認と内容解析
+ * @param {string} url - サイトのURL
+ * @returns {Promise<Object>} - llms.txt情報
+ */
+async function checkLlmsTxt(url) {
+  try {
+    // URLのベースドメインからllms.txtのURLを生成
+    const urlObj = new URL(url);
+    const llmsTxtUrl = `${urlObj.protocol}//${urlObj.host}/llms.txt`;
+
+    const response = await axios.get(llmsTxtUrl, {
+      timeout: 5000,
+      validateStatus: (status) => status === 200
+    });
+
+    if (response.status === 200 && response.data) {
+      const content = response.data;
+
+      // Markdown要素の解析
+      const hasH1 = /^#\s+.+$/m.test(content);
+      const h1Match = content.match(/^#\s+(.+)$/m);
+      const projectName = h1Match ? h1Match[1].trim() : null;
+
+      const hasSummary = /^>.+$/m.test(content);
+      const summaryMatch = content.match(/^>(.+)$/m);
+      const summary = summaryMatch ? summaryMatch[1].trim() : null;
+
+      const sectionMatches = content.match(/^##\s+.+$/gm) || [];
+      const sectionCount = sectionMatches.length;
+
+      return {
+        exists: true,
+        hasH1,
+        projectName,
+        hasSummary,
+        summary,
+        sectionCount,
+        url: llmsTxtUrl
+      };
+    }
+  } catch (error) {
+    // llms.txtが存在しない、または取得エラー
+    return {
+      exists: false,
+      error: error.message
+    };
+  }
+
+  return { exists: false };
+}
 
 /**
  * AI引用最適化評価（LLMO特化・詳細版）
  * @param {Object} crawlData - クロールデータ
- * @returns {Object} - LLMO分析結果
+ * @returns {Promise<Object>} - LLMO分析結果
  */
-function analyzeLLMO(crawlData) {
+async function analyzeLLMO(crawlData) {
   const $ = cheerio.load(crawlData.html);
   const textContent = crawlData.textContent || '';
   const structuredData = crawlData.structuredData || [];
@@ -219,7 +272,27 @@ function analyzeLLMO(crawlData) {
       : '「重要：」「ポイント：」等で要点を強調することを推奨します。'
   };
 
-  // 4. コンテンツ鮮度（20点）
+  // 4. llms.txt実装（10点）
+
+  // llms.txtの存在確認
+  const llmsTxtInfo = await checkLlmsTxt(crawlData.url);
+
+  results.details.llmsTxt = {
+    implemented: llmsTxtInfo.exists,
+    hasH1: llmsTxtInfo.hasH1 || false,
+    projectName: llmsTxtInfo.projectName || null,
+    hasSummary: llmsTxtInfo.hasSummary || false,
+    summary: llmsTxtInfo.summary || null,
+    sectionCount: llmsTxtInfo.sectionCount || 0,
+    score: llmsTxtInfo.exists ? 10 : 0,
+    recommendation: llmsTxtInfo.exists
+      ? `llms.txt が実装されています${llmsTxtInfo.projectName ? `（プロジェクト: ${llmsTxtInfo.projectName}）` : ''}。AI/LLMによる最適なコンテンツアクセスが可能です。`
+      : 'llms.txt の実装を推奨します。AI/LLMに対して推奨コンテンツを案内できます。'
+  };
+
+  results.rawData.llmsTxt = llmsTxtInfo;
+
+  // 5. コンテンツ鮮度（20点）
 
   // 公開日
   const hasPublishDate = $('meta[property="article:published_time"]').length > 0 ||
@@ -287,8 +360,8 @@ function analyzeLLMO(crawlData) {
       : '更新履歴セクションの追加を推奨します。'
   };
 
-  // 総合スコア計算
-  results.score = Math.round(
+  // 総合スコア計算（110点満点 → 100点に正規化）
+  const rawScore =
     results.details.definitions.score +
     results.details.howToContent.score +
     results.details.whyContent.score +
@@ -299,11 +372,14 @@ function analyzeLLMO(crawlData) {
     results.details.paragraphIndependence.score +
     results.details.summaries.score +
     results.details.keyPointEmphasis.score +
+    results.details.llmsTxt.score +
     results.details.publishDate.score +
     results.details.updateDate.score +
     results.details.freshnessMentions.score +
-    results.details.updateHistory.score
-  );
+    results.details.updateHistory.score;
+
+  // 110点満点を100点満点に正規化
+  results.score = Math.round((rawScore / 110) * 100);
 
   // AI引用適正スコア（総合評価）
   const overallCitationScore = (results.score / results.maxScore) * 100;
@@ -315,6 +391,35 @@ function analyzeLLMO(crawlData) {
         ? 'AIによる引用適性は中程度です。改善の余地があります。'
         : 'AIによる引用適性が低いため、構造化と明確な回答形式の改善を推奨します。'
   };
+
+  // --- 経営インパクト算出（Business Impact Calculation） ---
+  let impactAssessment = {
+    level: 'low',
+    title: 'AI市場への適応',
+    description: 'AIエージェント向けの対策が一定水準で実施されており、次世代検索エンジンからの流入が期待できます。'
+  };
+
+  const criticalFailures = [];
+  // llmsTxtInfo は checkLlmsTxt の結果 (非同期で取得済みと仮定)
+  // results.details.llmsTxt.implemented を参照
+  if (!results.details.llmsTxt.implemented) criticalFailures.push('AI用サイトマップ(llms.txt)未実装');
+  if (overallCitationScore < 40) criticalFailures.push('AI可読性が著しく低い');
+
+  if (criticalFailures.length > 0) {
+    impactAssessment = {
+      level: 'critical',
+      title: 'AI市場からの「完全除外」リスク',
+      description: `重大な警告です。${criticalFailures.join('、')}のため、ChatGPTやPerplexityなどのAI検索エンジンが御社の情報を正しく認識できません。このままでは、AIが普及するにつれて「存在しない企業」として扱われ、競合他社にシェアを完全に奪われるリスクがあります。`
+    };
+  } else if (!results.details.definitions.count) {
+    impactAssessment = {
+      level: 'medium',
+      title: '引用機会の損失',
+      description: '「〜とは」等の定義文構造が不足しているため、AIがユーザーの質問に答える際の「回答ソース」として御社が選ばれる確率が低下しています。'
+    };
+  }
+
+  results.businessImpact = impactAssessment;
 
   // FAQ関連（PDF生成用 - 実データはcontentアナライザーにあります）
   results.details.faqContent = {

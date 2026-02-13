@@ -133,13 +133,14 @@ function analyzeStatistics(crawlData) {
   // 2. データの出典明示（30点）
 
   // 公的機関データ
-  const govLinks = (crawlData.links || []).filter(link =>
-    link.href.includes('.gov') ||
-    link.href.includes('.go.jp') ||
-    link.href.includes('stat.go.jp') ||
-    link.href.includes('mhlw.go.jp') ||
-    link.href.includes('meti.go.jp')
-  );
+  const govLinks = (crawlData.links || []).filter(link => {
+    const href = typeof link.href === 'string' ? link.href : String(link.href || '');
+    return href.includes('.gov') ||
+      href.includes('.go.jp') ||
+      href.includes('stat.go.jp') ||
+      href.includes('mhlw.go.jp') ||
+      href.includes('meti.go.jp');
+  });
 
   results.details.governmentData = {
     count: govLinks.length,
@@ -154,15 +155,16 @@ function analyzeStatistics(crawlData) {
   results.rawData.governmentSources = govLinks.map(l => l.href);
 
   // 学術論文引用
-  const academicLinks = (crawlData.links || []).filter(link =>
-    link.href.includes('.ac.jp') ||
-    link.href.includes('.edu') ||
-    link.href.includes('doi.org') ||
-    link.href.includes('scholar.google') ||
-    link.href.includes('pubmed') ||
-    link.href.includes('arxiv.org') ||
-    link.href.includes('researchgate')
-  );
+  const academicLinks = (crawlData.links || []).filter(link => {
+    const href = typeof link.href === 'string' ? link.href : String(link.href || '');
+    return href.includes('.ac.jp') ||
+      href.includes('.edu') ||
+      href.includes('doi.org') ||
+      href.includes('scholar.google') ||
+      href.includes('pubmed') ||
+      href.includes('arxiv.org') ||
+      href.includes('researchgate');
+  });
 
   results.details.academicPapers = {
     count: academicLinks.length,

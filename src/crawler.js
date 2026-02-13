@@ -11,8 +11,8 @@ async function crawlWebsite(url, options = {}) {
   let browser;
 
   try {
-    // タイムアウト設定（デフォルト30秒）
-    const timeout = options.timeout || 30000;
+    // タイムアウト設定（デフォルト60秒）
+    const timeout = options.timeout || 60000;
 
     // ブラウザを起動
     browser = await puppeteer.launch({
@@ -31,7 +31,7 @@ async function crawlWebsite(url, options = {}) {
     // ページのパフォーマンスメトリクスを収集
     const startTime = Date.now();
 
-    // ページにアクセス
+    // ページにアクセス（動的コンテンツの読み込みを待機）
     const response = await page.goto(url, {
       waitUntil: 'networkidle2',
       timeout: timeout
@@ -54,16 +54,23 @@ async function crawlWebsite(url, options = {}) {
       })).filter(m => m.name);
     });
 
-    // 構造化データを取得
+    // 構造化データを取得（強化版）
     const structuredData = await page.evaluate(() => {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
-      return scripts.map(script => {
+      const data = [];
+      scripts.forEach(script => {
         try {
-          return JSON.parse(script.textContent);
+          const content = JSON.parse(script.textContent);
+          if (Array.isArray(content)) {
+            data.push(...content);
+          } else {
+            data.push(content);
+          }
         } catch (e) {
-          return null;
+          // パースエラーはスキップ
         }
-      }).filter(Boolean);
+      });
+      return data;
     });
 
     // 画像情報を取得
@@ -153,13 +160,9 @@ async function crawlWebsite(url, options = {}) {
         // FID は実際のユーザーインタラクションが必要なため、ここでは0とする
         setTimeout(() => {
           resolve({ lcp, cls, fid: 0 });
-        }, 1000);
+        }, 500);
       });
     });
-
-    // モバイルビューポートでもチェック
-    await page.setViewport({ width: 375, height: 667 });
-    const mobileContent = await page.content();
 
     await browser.close();
 
@@ -176,7 +179,6 @@ async function crawlWebsite(url, options = {}) {
       headings,
       textContent,
       html,
-      mobileHtml: mobileContent,
       redirectChain: redirectChain.map(r => r.url()),
       performanceMetrics,
       webVitals,

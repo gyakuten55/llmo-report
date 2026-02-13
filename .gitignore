@@ -2,7 +2,7 @@
 node_modules/
 
 # Generated reports
-reports/*.pdf
+reports/
 
 # Environment variables
 .env

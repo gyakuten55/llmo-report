@@ -1,6 +1,23 @@
 // グローバル変数
+const API_KEY = 'hero_aivo_2025_secret'; // .envで設定したAPI_KEYをここに入力してください
 let currentJobId = null;
 let pollInterval = null;
+let currentHistoryPage = 1;
+
+// APIリクエスト用のヘルパー関数
+async function fetchWithAuth(url, options = {}) {
+  const headers = {
+    ...options.headers,
+    'x-api-key': API_KEY
+  };
+  
+  // Content-Typeが指定されていない場合で、bodyがあるときはJSONとみなす（簡易判定）
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  return fetch(url, { ...options, headers });
+}
 
 // DOM要素
 const inputSection = document.getElementById('input-section');
@@ -8,6 +25,8 @@ const progressSection = document.getElementById('progress-section');
 const resultSection = document.getElementById('result-section');
 const errorSection = document.getElementById('error-section');
 const detailsSection = document.getElementById('details-section');
+const historySection = document.getElementById('history-section');
+const historyDetailSection = document.getElementById('history-detail-section');
 
 const analyzeForm = document.getElementById('analyze-form');
 const urlInput = document.getElementById('url-input');
@@ -67,9 +86,16 @@ async function handleAnalyzeSubmit(e) {
   const timeoutInput = document.getElementById('timeout');
   const timeout = timeoutInput ? parseInt(timeoutInput.value) * 1000 : 30000;
 
-  // クライアント名を取得
-  const clientNameInput = document.getElementById('client-name');
-  const clientName = clientNameInput ? clientNameInput.value.trim() : '';
+  // 会社名を取得
+  const companyNameInput = document.getElementById('company-name');
+  const companyName = companyNameInput ? companyNameInput.value.trim() : '';
+
+  // 業種名を取得
+  const industryNameInput = document.getElementById('industry-name');
+  const industryName = industryNameInput ? industryNameInput.value : '';
+
+  // 診断モードを判定
+  const isMultiPage = document.getElementById('mode-multi').checked;
 
   // セクション切り替え
   hideAllSections();
@@ -79,29 +105,54 @@ async function handleAnalyzeSubmit(e) {
   updateProgress(0, '診断を開始しています...');
 
   try {
-    // APIリクエスト
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url,
-        clientName: clientName || null,
-        options: { timeout }
-      })
-    });
+    if (isMultiPage) {
+      // 複数ページ診断
+      const maxDepth = parseInt(document.getElementById('max-depth').value) || 2;
+      const maxPages = parseInt(document.getElementById('max-pages').value) || 50;
+      const useSitemap = document.getElementById('use-sitemap').checked;
+      const respectRobots = document.getElementById('respect-robots').checked;
 
-    const data = await response.json();
+      currentJobId = await window.MultiPageAnalysis.startMultiPageAnalysis(url, companyName, industryName, {
+        maxDepth,
+        maxPages,
+        useSitemap,
+        respectRobots
+      });
 
-    if (!response.ok) {
-      throw new Error(data.error || '診断の開始に失敗しました');
+      // 複数ページ診断の進捗をポーリング
+      const result = await window.MultiPageAnalysis.pollMultiPageProgress(currentJobId);
+
+      if (result.completed) {
+        // 複数ページ診断結果を表示
+        await window.MultiPageAnalysis.displayMultiPageResults(currentJobId);
+      }
+
+    } else {
+      // 単一ページ診断
+      const response = await fetchWithAuth('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url,
+          companyName: companyName || null,
+          industryName: industryName || null,
+          options: { timeout }
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '診断の開始に失敗しました');
+      }
+
+      currentJobId = data.jobId;
+
+      // 進捗をポーリング
+      startPolling();
     }
-
-    currentJobId = data.jobId;
-
-    // 進捗をポーリング
-    startPolling();
 
   } catch (error) {
     showError(error.message);
@@ -112,7 +163,7 @@ async function handleAnalyzeSubmit(e) {
 function startPolling() {
   pollInterval = setInterval(async () => {
     try {
-      const response = await fetch(`/api/analyze/${currentJobId}`);
+      const response = await fetchWithAuth(`/api/analyze/${currentJobId}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -153,6 +204,17 @@ function updateProgress(progress, message) {
   statusText.textContent = message;
 }
 
+// グローバルに公開（multi-page.jsから使用）
+window.updateProgress = updateProgress;
+window.hideAllSections = hideAllSections;
+window.showSection = function(sectionId) {
+  hideAllSections();
+  const section = document.getElementById(sectionId);
+  if (section) section.style.display = 'block';
+};
+window.createCategorySection = createCategorySection;
+window.formatMetricLabel = formatMetricLabel;
+
 // ステータスメッセージ取得
 function getStatusMessage(status) {
   const messages = {
@@ -173,7 +235,7 @@ function getStatusMessage(status) {
 // 結果表示
 async function showResults() {
   try {
-    const response = await fetch(`/api/result/${currentJobId}`);
+    const response = await fetchWithAuth(`/api/result/${currentJobId}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -182,41 +244,8 @@ async function showResults() {
 
     const result = data.result;
 
-    // 総合スコア計算（PDFと同じロジック）
-    const weights = {
-      content: 0.15,
-      entity: 0.15,
-      eeat: 0.20,
-      statistics: 0.10,
-      structuredData: 0.15,
-      llmo: 0.10,
-      seo: 0.08,
-      performance: 0.04,
-      multimedia: 0.02,
-      social: 0.01
-    };
-
-    if (result.localSeo && result.localSeo.isLocalBusiness) {
-      weights.localSeo = 0.02;
-    }
-
-    const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
-
-    const totalScore = Math.round(
-      (result.content.score / result.content.maxScore * weights.content +
-       result.entity.score / result.entity.maxScore * weights.entity +
-       result.eeat.score / result.eeat.maxScore * weights.eeat +
-       result.statistics.score / result.statistics.maxScore * weights.statistics +
-       result.structuredData.score / result.structuredData.maxScore * weights.structuredData +
-       result.llmo.score / result.llmo.maxScore * weights.llmo +
-       result.seo.score / result.seo.maxScore * weights.seo +
-       result.performance.score / result.performance.maxScore * weights.performance +
-       result.multimedia.score / result.multimedia.maxScore * weights.multimedia +
-       result.social.score / result.social.maxScore * weights.social +
-       (result.localSeo && result.localSeo.isLocalBusiness ?
-         result.localSeo.score / result.localSeo.maxScore * weights.localSeo : 0)
-      ) / totalWeight * 100
-    );
+    // APIで計算済みのスコアをそのまま使用（PDFとの完全一致を保証）
+    const totalScore = result.totalScore || 0;
 
     // スコア表示
     totalScoreEl.textContent = totalScore;
@@ -262,6 +291,19 @@ function handleViewDetails() {
   }
 
   const result = window.analysisResult;
+
+  // 複数ページ診断の場合は既に詳細が表示されているのでスクロール
+  if (result.isMultiPage) {
+    const detailsSection = document.getElementById('details-section');
+    if (detailsSection.style.display === 'block') {
+      detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      detailsSection.style.display = 'block';
+      detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    return;
+  }
+
   let html = '';
 
   // ヘッダー
@@ -329,6 +371,7 @@ function handleViewDetails() {
   // 6. LLMO特化評価
   html += createCategorySection('LLMO特化評価 (AI引用最適化)', result.llmo, [
     { label: 'AI引用適正スコア', key: 'aiCitationScore', metrics: ['overall'] },
+    { label: 'llms.txt実装', key: 'llmsTxt', metrics: ['implemented', 'hasH1', 'projectName', 'hasSummary', 'sectionCount'] },
     { label: '定義文（〜とは）', key: 'definitions', metrics: ['count'] },
     { label: 'How-toコンテンツ', key: 'howToContent', metrics: ['count'] },
     { label: 'Why形式', key: 'whyContent', metrics: ['count'] },
@@ -516,6 +559,10 @@ function formatMetricLabel(metric) {
     'stepCount': 'ステップ数',
     'hasAuthor': '著者情報',
     'overall': '総合評価',
+    'hasH1': 'H1見出し',
+    'projectName': 'プロジェクト名',
+    'hasSummary': '概要',
+    'sectionCount': 'セクション数',
     'rhetorical': '修辞疑問',
     'independent': '独立段落数',
     'yearMentions': '年号言及',
@@ -559,13 +606,43 @@ function formatMetricLabel(metric) {
 }
 
 // PDFダウンロード
-function handleDownloadPdf() {
+async function handleDownloadPdf() {
   if (!currentJobId) {
     alert('ジョブIDがありません');
     return;
   }
 
-  window.location.href = `/api/report/${currentJobId}`;
+  try {
+    const downloadBtn = document.getElementById('download-pdf-btn');
+    const originalText = downloadBtn.textContent;
+    downloadBtn.textContent = 'ダウンロード中...';
+    downloadBtn.disabled = true;
+
+    const response = await fetchWithAuth(`/api/report/${currentJobId}`);
+    
+    if (!response.ok) {
+      throw new Error('PDFのダウンロードに失敗しました');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LLMO診断.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    downloadBtn.textContent = originalText;
+    downloadBtn.disabled = false;
+  } catch (error) {
+    console.error('PDFダウンロードエラー:', error);
+    alert('PDFのダウンロードに失敗しました: ' + error.message);
+    const downloadBtn = document.getElementById('download-pdf-btn');
+    downloadBtn.textContent = 'PDFレポートをダウンロード';
+    downloadBtn.disabled = false;
+  }
 }
 
 // 新規診断
@@ -599,4 +676,331 @@ function hideAllSections() {
   progressSection.style.display = 'none';
   resultSection.style.display = 'none';
   errorSection.style.display = 'none';
+  if (historySection) historySection.style.display = 'none';
+  if (historyDetailSection) historyDetailSection.style.display = 'none';
 }
+
+// ===== 履歴機能 =====
+
+// 業種マスタを読み込む
+async function loadIndustries() {
+  try {
+    const response = await fetchWithAuth('/api/industries');
+    const industries = await response.json();
+
+    // 診断フォームの業種セレクト
+    const industrySelect = document.getElementById('industry-name');
+    if (industrySelect) {
+      industries.forEach(industry => {
+        const option = document.createElement('option');
+        option.value = industry.name;
+        option.textContent = industry.name;
+        industrySelect.appendChild(option);
+      });
+    }
+
+    // 履歴フィルターの業種セレクト
+    const historyFilterIndustry = document.getElementById('history-filter-industry');
+    if (historyFilterIndustry) {
+      industries.forEach(industry => {
+        const option = document.createElement('option');
+        option.value = industry.name;
+        option.textContent = industry.name;
+        historyFilterIndustry.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('業種マスタ読み込みエラー:', error);
+  }
+}
+
+// 履歴を読み込む
+async function loadHistory(page = 1) {
+  currentHistoryPage = page;
+
+  const companyName = document.getElementById('history-search-company')?.value || '';
+  const industryName = document.getElementById('history-filter-industry')?.value || '';
+  const sortValue = document.getElementById('history-sort')?.value || 'created_at:desc';
+  const [sortBy, order] = sortValue.split(':');
+
+  const params = new URLSearchParams({
+    page,
+    limit: 20,
+    sortBy,
+    order
+  });
+
+  if (companyName) params.append('companyName', companyName);
+  if (industryName) params.append('industryName', industryName);
+
+  try {
+    const response = await fetchWithAuth(`/api/history?${params}`);
+    const data = await response.json();
+
+    // 診断データ数を更新
+    const totalCountEl = document.getElementById('history-total-count');
+    if (totalCountEl) {
+      totalCountEl.textContent = `(${data.total || 0}件)`;
+    }
+
+    renderHistoryList(data.data || []);
+    renderPagination(data.page, data.totalPages);
+  } catch (error) {
+    console.error('履歴読み込みエラー:', error);
+    document.getElementById('history-list').innerHTML = '<p class="error-text">履歴の読み込みに失敗しました</p>';
+  }
+}
+
+// 履歴一覧をレンダリング
+function renderHistoryList(items) {
+  const container = document.getElementById('history-list');
+
+  if (!items || items.length === 0) {
+    container.innerHTML = '<p class="no-data-text">診断履歴がありません</p>';
+    return;
+  }
+
+  container.innerHTML = items.map(item => `
+    <div class="history-item" data-id="${item.id}">
+      <div class="history-item-header">
+        <span class="company-name">${item.company_name || '未設定'}</span>
+        <span class="industry-badge">${item.industry_name || '-'}</span>
+        <span class="score-badge ${getScoreClass(item.total_score)}">${item.total_score || '-'}点</span>
+      </div>
+      <div class="history-item-body">
+        <p class="url">${item.url}</p>
+        <p class="date">${formatDate(item.created_at)}</p>
+        <p class="mode">${item.is_multi_page ? `複数ページ (${item.page_count}ページ)` : '単一ページ'}</p>
+      </div>
+      <div class="history-item-actions">
+        <button class="btn btn-sm" onclick="viewHistoryReport('${item.id}')">詳細</button>
+        <button class="btn btn-sm" onclick="downloadHistoryPdf('${item.job_id}')">PDF</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteHistoryReport('${item.id}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ページネーションをレンダリング
+function renderPagination(currentPage, totalPages) {
+  const container = document.getElementById('history-pagination');
+
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+
+  // 前へボタン
+  if (currentPage > 1) {
+    html += `<button class="btn btn-sm" onclick="loadHistory(${currentPage - 1})">←</button>`;
+  }
+
+  // ページ番号
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === currentPage) {
+      html += `<span class="page-current">${i}</span>`;
+    } else if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      html += `<button class="btn btn-sm" onclick="loadHistory(${i})">${i}</button>`;
+    } else if (i === currentPage - 3 || i === currentPage + 3) {
+      html += `<span class="page-ellipsis">...</span>`;
+    }
+  }
+
+  // 次へボタン
+  if (currentPage < totalPages) {
+    html += `<button class="btn btn-sm" onclick="loadHistory(${currentPage + 1})">→</button>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// 履歴詳細を表示
+async function viewHistoryReport(id) {
+  try {
+    const response = await fetchWithAuth(`/api/history/${id}`);
+    const report = await response.json();
+
+    if (!response.ok) {
+      throw new Error(report.error || '詳細の取得に失敗しました');
+    }
+
+    // 詳細を表示
+    window.analysisResult = report.analysis_result;
+    currentJobId = report.job_id;
+
+    // 結果画面に表示するためのスコア更新
+    if (report.analysis_result) {
+      const result = report.analysis_result;
+
+      // 総合スコア
+      totalScoreEl.textContent = report.total_score || 0;
+
+      // 各カテゴリのスコア
+      if (result.seo) {
+        seoScoreEl.textContent = `${result.seo.score}/${result.seo.maxScore}`;
+        seoBarEl.style.width = `${(result.seo.score / result.seo.maxScore) * 100}%`;
+      }
+      if (result.performance) {
+        performanceScoreEl.textContent = `${result.performance.score}/${result.performance.maxScore}`;
+        performanceBarEl.style.width = `${(result.performance.score / result.performance.maxScore) * 100}%`;
+      }
+      if (result.content) {
+        contentScoreEl.textContent = `${result.content.score}/${result.content.maxScore}`;
+        contentBarEl.style.width = `${(result.content.score / result.content.maxScore) * 100}%`;
+      }
+      if (result.structuredData) {
+        structuredScoreEl.textContent = `${result.structuredData.score}/${result.structuredData.maxScore}`;
+        structuredBarEl.style.width = `${(result.structuredData.score / result.structuredData.maxScore) * 100}%`;
+      }
+      if (result.llmo) {
+        llmoScoreEl.textContent = `${result.llmo.score}/${result.llmo.maxScore}`;
+        llmoBarEl.style.width = `${(result.llmo.score / result.llmo.maxScore) * 100}%`;
+      }
+    }
+
+    // 結果セクションを表示
+    hideAllSections();
+    resultSection.style.display = 'block';
+    detailsSection.style.display = 'none';
+
+  } catch (error) {
+    console.error('履歴詳細表示エラー:', error);
+    alert('詳細の表示に失敗しました: ' + error.message);
+  }
+}
+
+// 履歴からPDFをダウンロード
+async function downloadHistoryPdf(jobId) {
+  try {
+    const response = await fetchWithAuth(`/api/report/${jobId}`);
+    
+    if (!response.ok) {
+      throw new Error('PDFのダウンロードに失敗しました');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LLMO診断.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('PDFダウンロードエラー:', error);
+    alert('PDFのダウンロードに失敗しました: ' + error.message);
+  }
+}
+
+// 履歴を削除
+async function deleteHistoryReport(id) {
+  if (!confirm('この診断結果を削除しますか？')) return;
+
+  try {
+    const response = await fetchWithAuth(`/api/history/${id}`, { method: 'DELETE' });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || '削除に失敗しました');
+    }
+
+    // 履歴を再読み込み
+    loadHistory(currentHistoryPage);
+  } catch (error) {
+    console.error('履歴削除エラー:', error);
+    alert('削除に失敗しました: ' + error.message);
+  }
+}
+
+// 履歴をCSVエクスポート
+function exportHistoryCsv() {
+  const companyName = document.getElementById('history-search-company')?.value || '';
+  const industryName = document.getElementById('history-filter-industry')?.value || '';
+  const sortValue = document.getElementById('history-sort')?.value || 'created_at:desc';
+  const [sortBy, order] = sortValue.split(':');
+
+  // クエリパラメータを構築
+  const params = new URLSearchParams();
+  if (companyName) params.append('companyName', companyName);
+  if (industryName) params.append('industryName', industryName);
+  params.append('sortBy', sortBy);
+  params.append('order', order);
+
+  // CSVダウンロード
+  window.location.href = `/api/history/export/csv?${params.toString()}`;
+}
+
+// スコアに応じたクラスを取得
+function getScoreClass(score) {
+  if (score >= 80) return 'high';
+  if (score >= 50) return 'medium';
+  return 'low';
+}
+
+// 日付をフォーマット
+function formatDate(dateString) {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// ナビゲーション切り替え
+function setupNavigation() {
+  const navDiagnosis = document.getElementById('nav-diagnosis');
+  const navHistory = document.getElementById('nav-history');
+
+  if (navDiagnosis) {
+    navDiagnosis.addEventListener('click', () => {
+      navDiagnosis.classList.add('active');
+      navHistory.classList.remove('active');
+      hideAllSections();
+      inputSection.style.display = 'block';
+    });
+  }
+
+  if (navHistory) {
+    navHistory.addEventListener('click', () => {
+      navHistory.classList.add('active');
+      navDiagnosis.classList.remove('active');
+      hideAllSections();
+      historySection.style.display = 'block';
+      loadHistory(1);
+    });
+  }
+
+  // 履歴検索ボタン
+  const historySearchBtn = document.getElementById('history-search-btn');
+  if (historySearchBtn) {
+    historySearchBtn.addEventListener('click', () => loadHistory(1));
+  }
+
+  // CSVエクスポートボタン
+  const historyExportCsvBtn = document.getElementById('history-export-csv-btn');
+  if (historyExportCsvBtn) {
+    historyExportCsvBtn.addEventListener('click', exportHistoryCsv);
+  }
+
+  // 履歴詳細から戻るボタン
+  const backToHistoryBtn = document.getElementById('back-to-history-btn');
+  if (backToHistoryBtn) {
+    backToHistoryBtn.addEventListener('click', () => {
+      hideAllSections();
+      historySection.style.display = 'block';
+    });
+  }
+}
+
+// ページ読み込み時に初期化
+document.addEventListener('DOMContentLoaded', () => {
+  loadIndustries();
+  setupNavigation();
+});

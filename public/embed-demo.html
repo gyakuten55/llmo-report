@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMO診断ウィジェット 埋め込みデモ</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            background-color: #1e3a8a;
+            color: white;
+            width: 100%;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .container {
+            max-width: 900px;
+            width: 95%;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 50px;
+        }
+        h1 { margin: 0; font-size: 28px; }
+        .demo-box {
+            background: #f9fafb;
+            border: 2px dashed #e5e7eb;
+            padding: 40px 20px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+        code {
+            background: #1e2937;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            display: block;
+            overflow-x: auto;
+            font-family: monospace;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+        .footer {
+            margin-top: auto;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>LLMO診断ウィジェット 埋め込みデモ</h1>
+        <p>外部サイト（あなたのブログ、コーポレートサイトなど）に診断機能を設置する例です。</p>
+    </div>
+
+    <div class="container">
+        <h2>1. 埋め込みプレビュー</h2>
+        <p>以下が、実際にサイトに表示されるウィジェットです：</p>
+        
+        <div class="demo-box">
+            <!-- 【重要】ここがウィジェットが表示される場所です -->
+            <div id="llmo-diagnostic-widget"></div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
+
+        <h2>2. 設置方法</h2>
+        <p>あなたのサイトのHTMLに、以下の2つの要素を追加するだけで設置完了です。</p>
+
+        <h3>ステップ1: 表示したい場所にタグを置く</h3>
+        <code>&lt;div id="llmo-diagnostic-widget"&gt;&lt;/div&gt;</code>
+
+        <h3>ステップ2: スクリプトを読み込む</h3>
+        <p><code>&lt;/body&gt;</code> タグの直前などでスクリプトを読み込みます。</p>
+        <code>&lt;script src="http://localhost:3000/widget.js"&gt;&lt;/script&gt;</code>
+
+        <p><small>※ <code>http://localhost:3000</code> の部分は、実際にシステムを公開しているURLに置き換えてください。</small></p>
+    </div>
+
+    <div class="footer">
+        &copy; 2025 LLMO Diagnostic Tool
+    </div>
+
+    <!-- ウィジェットスクリプトの実行 -->
+    <script src="widget.js"></script>
+</body>
+</html>

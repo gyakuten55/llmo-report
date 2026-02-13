@@ -120,28 +120,56 @@ function analyzeStructuredData(crawlData) {
       : '記事コンテンツの場合、Articleスキーマの実装を推奨します。'
   };
 
-  // Organizationスキーマのチェック
-  const hasOrganization = structuredData.some(data =>
-    data['@type'] === 'Organization' ||
-    (Array.isArray(data['@type']) && data['@type'].includes('Organization'))
+  // Organization/LocalBusinessスキーマ分析
+  const orgSchemas = structuredData.filter(data =>
+    ['Organization', 'Corporation', 'LocalBusiness', 'Store', 'Restaurant'].includes(data['@type']) ||
+    (Array.isArray(data['@type']) && data['@type'].some(t => ['Organization', 'Corporation', 'LocalBusiness', 'Store', 'Restaurant'].includes(t)))
   );
 
-  const orgData = structuredData.find(data =>
-    data['@type'] === 'Organization' ||
-    (Array.isArray(data['@type']) && data['@type'].includes('Organization'))
-  );
+  const orgData = orgSchemas.length > 0 ? orgSchemas[0] : null;
+  results.rawData.organization = orgData;
 
-  results.rawData.organization = orgData || null;
+  let orgScore = 0;
+  let orgRec = '組織情報の構造化データが見つかりません。';
+  let hasLogo = false;
+  let hasSameAs = false;
+
+  if (orgData) {
+    const type = orgData['@type'];
+    const isLocal = ['LocalBusiness', 'Store', 'Restaurant'].includes(type) ||
+                    (Array.isArray(type) && type.some(t => ['LocalBusiness', 'Store', 'Restaurant'].includes(t)));
+    
+    hasLogo = !!orgData.logo;
+    hasSameAs = !!orgData.sameAs && (Array.isArray(orgData.sameAs) ? orgData.sameAs.length > 0 : !!orgData.sameAs);
+
+    if (isLocal) {
+      orgScore = 15;
+      orgRec = 'LocalBusiness（またはそのサブタイプ）が実装されています。';
+    } else {
+      orgScore = 10;
+      orgRec = 'Organizationが実装されています。実店舗がある場合はLocalBusinessへの変更を推奨します。';
+    }
+
+    if (hasLogo) {
+      orgScore += 5;
+    } else {
+      orgRec += 'ロゴ（logo）プロパティの追加を推奨します。';
+    }
+
+    if (hasSameAs) {
+      orgRec += ' 外部サイトとの接続（sameAs）が設定されています。';
+    } else {
+      orgRec += ' ナレッジグラフ確立のため、sameAs（SNSやWikipedia等へのリンク）の追加を強く推奨します。';
+    }
+  }
 
   results.details.organization = {
-    implemented: hasOrganization,
-    data: orgData || null,
-    hasLogo: orgData?.logo ? true : false,
-    hasContactPoint: orgData?.contactPoint ? true : false,
-    score: hasOrganization ? 10 : 0,
-    recommendation: hasOrganization
-      ? 'Organizationスキーマが実装されています。'
-      : 'Organizationスキーマの実装を推奨します。企業情報の明確化に有効です。'
+    implemented: !!orgData,
+    data: orgData,
+    hasLogo,
+    hasSameAs,
+    score: orgScore, // Max 20+ (can exceed but handled in total) -> adjusted to contribute to total
+    recommendation: orgRec
   };
 
   // BreadcrumbListスキーマのチェック
@@ -152,45 +180,21 @@ function analyzeStructuredData(crawlData) {
 
   results.details.breadcrumb = {
     implemented: hasBreadcrumb,
-    score: hasBreadcrumb ? 5 : 0,
+    score: hasBreadcrumb ? 10 : 0,
     recommendation: hasBreadcrumb
       ? 'パンくずリストの構造化データが実装されています。'
       : 'パンくずリストがある場合、構造化データの実装を推奨します。'
   };
 
-  // エンティティ情報の明確性
-  // Organization, Person, Placeなどのエンティティがどれだけ詳細に記述されているか
-  const entitySchemas = ['Organization', 'Person', 'Place', 'Product'];
-  const foundEntities = structuredData.filter(data =>
-    entitySchemas.includes(data['@type']) ||
-    (Array.isArray(data['@type']) && data['@type'].some(t => entitySchemas.includes(t)))
-  );
-
-  results.rawData.entities = foundEntities;
-
-  results.details.entityClarity = {
-    count: foundEntities.length,
-    entities: foundEntities.map(e => ({
-      type: e['@type'],
-      name: e.name || null,
-      description: e.description || null
-    })),
-    score: Math.min(foundEntities.length * 5, 10),
-    recommendation: foundEntities.length > 0
-      ? 'エンティティ情報が構造化データで定義されています。'
-      : '主要なエンティティ（組織、人物、場所など）の構造化データ実装を推奨します。'
-  };
-
   // 総合スコア計算
-  results.score = Math.round(
-    results.details.implementation.score +
-    results.details.schemaTypes.score +
-    results.details.faq.score +
-    results.details.howTo.score +
-    results.details.article.score +
-    results.details.organization.score +
-    results.details.breadcrumb.score +
-    results.details.entityClarity.score
+  results.score = Math.min(100,
+    results.details.implementation.score + // Max 20
+    results.details.schemaTypes.score +    // Max 20
+    results.details.faq.score +            // Max 15
+    results.details.howTo.score +          // Max 10
+    results.details.article.score +        // Max 10
+    results.details.organization.score +   // Max 20 (base 15 + logo 5)
+    results.details.breadcrumb.score       // Max 10
   );
 
   return results;

@@ -13,6 +13,12 @@
       <p class="subtitle">Webサイトの包括的SEO・パフォーマンス・LLMO診断サービス</p>
     </header>
 
+    <!-- ナビゲーション -->
+    <nav class="main-nav">
+      <button class="nav-btn active" data-view="diagnosis" id="nav-diagnosis">新規診断</button>
+      <button class="nav-btn" data-view="history" id="nav-history">診断履歴</button>
+    </nav>
+
     <main>
       <!-- 診断開始フォーム -->
       <section id="input-section" class="section">
@@ -29,13 +35,114 @@
           </div>
 
           <div class="form-group">
-            <label for="client-name">クライアント名（会社名・団体名）</label>
+            <label for="company-name">会社名・団体名</label>
             <input
               type="text"
-              id="client-name"
+              id="company-name"
               placeholder="例: 株式会社サンプル"
             >
             <small style="color: #6b7280; font-size: 12px;">※レポートに「〇〇様向け」として表示されます</small>
+          </div>
+
+          <div class="form-group">
+            <label for="industry-name">業種</label>
+            <select id="industry-name">
+              <option value="">選択してください</option>
+              <!-- 業種マスタから動的に読み込み -->
+            </select>
+          </div>
+
+          <!-- 診断モード選択 -->
+          <div class="form-group">
+            <label>診断モード</label>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="mode" value="single" id="mode-single" checked>
+                単一ページ診断
+              </label>
+              <label>
+                <input type="radio" name="mode" value="multi" id="mode-multi">
+                複数ページ診断
+              </label>
+            </div>
+          </div>
+
+          <!-- 複数ページ診断オプション -->
+          <div id="multi-page-options" style="display: none;">
+            <div class="form-group">
+              <label for="max-depth">クロール深度（1-5）</label>
+              <input
+                type="number"
+                id="max-depth"
+                value="2"
+                min="1"
+                max="5"
+              >
+              <small style="color: #6b7280; font-size: 12px;">※トップページからのリンク階層</small>
+            </div>
+
+            <div class="form-group">
+              <label for="max-pages">最大ページ数（1-100）</label>
+              <input
+                type="number"
+                id="max-pages"
+                value="50"
+                min="1"
+                max="100"
+              >
+              <small style="color: #6b7280; font-size: 12px;">※診断するページの上限</small>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="use-sitemap" checked>
+                サイトマップを使用
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="respect-robots" checked>
+                robots.txtを遵守
+              </label>
+            </div>
+
+            <div class="form-group">
+              <button type="button" class="btn btn-secondary" id="discover-urls-btn">
+                クロール対象URLを取得
+              </button>
+            </div>
+
+            <!-- URL選択UI -->
+            <div id="url-selection-section" style="display: none;">
+              <h4>クロール対象URL選択</h4>
+              <p id="url-count-text"></p>
+
+              <div class="filter-group">
+                <label>カテゴリフィルター:</label>
+                <label><input type="checkbox" class="category-filter" value="static" checked> 固定ページ</label>
+                <label><input type="checkbox" class="category-filter" value="blog" checked> ブログ</label>
+                <label><input type="checkbox" class="category-filter" value="product" checked> 商品</label>
+                <label><input type="checkbox" class="category-filter" value="other" checked> その他</label>
+              </div>
+
+              <div class="filter-group">
+                <label>重要度フィルター:</label>
+                <label><input type="checkbox" class="importance-filter" value="high" checked> 高</label>
+                <label><input type="checkbox" class="importance-filter" value="medium" checked> 中</label>
+                <label><input type="checkbox" class="importance-filter" value="low"> 低</label>
+              </div>
+
+              <div class="url-list-container">
+                <div class="url-list-header">
+                  <label>
+                    <input type="checkbox" id="select-all-urls">
+                    全て選択
+                  </label>
+                </div>
+                <div id="url-list" class="url-list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -74,6 +181,7 @@
           <p id="progress-text" class="progress-text">0%</p>
         </div>
         <p id="status-text" class="status-text">準備中...</p>
+        <p id="page-progress-text" class="page-progress-text" style="display: none;"></p>
       </section>
 
       <!-- 診断結果 -->
@@ -157,6 +265,56 @@
           診断を再試行
         </button>
       </section>
+
+      <!-- 診断履歴 -->
+      <section id="history-section" class="section" style="display: none;">
+        <h2>診断履歴 <span id="history-total-count" class="total-count"></span></h2>
+
+        <!-- 検索・フィルター -->
+        <div class="history-filters">
+          <input
+            type="text"
+            id="history-search-company"
+            placeholder="会社名で検索"
+            class="filter-input"
+          >
+          <select id="history-filter-industry" class="filter-select">
+            <option value="">全業種</option>
+            <!-- 業種マスタから動的に読み込み -->
+          </select>
+          <select id="history-sort" class="filter-select">
+            <option value="created_at:desc">新しい順</option>
+            <option value="created_at:asc">古い順</option>
+            <option value="total_score:desc">スコア高い順</option>
+            <option value="total_score:asc">スコア低い順</option>
+          </select>
+          <button type="button" class="btn btn-secondary" id="history-search-btn">
+            検索
+          </button>
+          <button type="button" class="btn btn-primary" id="history-export-csv-btn">
+            CSV出力
+          </button>
+        </div>
+
+        <!-- 履歴一覧 -->
+        <div id="history-list" class="history-list">
+          <p class="loading-text">読み込み中...</p>
+        </div>
+
+        <!-- ページネーション -->
+        <div id="history-pagination" class="pagination"></div>
+      </section>
+
+      <!-- 履歴詳細表示 -->
+      <section id="history-detail-section" class="section" style="display: none;">
+        <div class="history-detail-header">
+          <button class="btn btn-secondary" id="back-to-history-btn">
+            ← 履歴一覧に戻る
+          </button>
+          <h2>診断詳細</h2>
+        </div>
+        <div id="history-detail-content"></div>
+      </section>
     </main>
 
     <footer>
@@ -165,5 +323,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="multi-page.js"></script>
 </body>
 </html>

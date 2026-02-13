@@ -36,7 +36,7 @@ function analyzeEEAT(crawlData) {
       : 'オリジナルの調査・実験データの追加を推奨します。'
   };
 
-  // 実体験の記述
+  // Experience: 実体験記述 (10点)
   const experiencePatterns = [
     '実際に', '使ってみた', '試してみた', 'やってみた', '体験した',
     '使用した', '利用した', '実践した', '経験した'
@@ -55,13 +55,13 @@ function analyzeEEAT(crawlData) {
   results.details.experienceDescription = {
     count: experienceCount,
     patterns: foundExperiencePatterns,
-    score: experienceCount >= 5 ? 8 : Math.min(experienceCount * 1.6, 8),
+    score: experienceCount >= 5 ? 10 : Math.min(experienceCount * 2, 10),
     recommendation: experienceCount >= 5
       ? '実体験に基づく記述が充実しています。'
       : '「実際に〜した」形式の実体験記述を推奨します。'
   };
 
-  // ビフォーアフター（結果の実例）
+  // Experience: ビフォーアフター (5点)
   const beforeAfterKeywords = ['ビフォーアフター', '結果', '成果', '効果', '改善', '変化', '比較'];
   let beforeAfterCount = 0;
   beforeAfterKeywords.forEach(keyword => {
@@ -74,7 +74,7 @@ function analyzeEEAT(crawlData) {
     hasResultKeywords: beforeAfterCount > 0,
     keywordCount: beforeAfterCount,
     hasImages: hasImages,
-    score: (beforeAfterCount >= 2 && hasImages) ? 4 : (beforeAfterCount > 0 ? 2 : 0),
+    score: (beforeAfterCount >= 2 && hasImages) ? 5 : (beforeAfterCount > 0 ? 3 : 0),
     recommendation: beforeAfterCount >= 2
       ? '結果の実例が提示されています。'
       : 'ビフォーアフター等の結果実例の追加を推奨します。'
@@ -108,7 +108,7 @@ function analyzeEEAT(crawlData) {
 
   // 2. Expertise（専門性）評価（25点）
 
-  // 著者の資格明示
+  // Expertise: 著者の資格明示 (10点)
   const credentialKeywords = [
     '資格', '認定', '博士', '修士', '学士', 'PhD', 'MBA',
     '専門家', 'エキスパート', 'スペシャリスト', '認定資格',
@@ -140,20 +140,20 @@ function analyzeEEAT(crawlData) {
 
   results.rawData.authorCredentials = foundCredentials;
 
-  // 専門用語の適切な使用
+  // Expertise: 専門用語の適切な使用 (5点)
   const technicalTermsPattern = /[ぁ-ん一-龯]+（[A-Za-z\s]+）/g;
   const technicalTerms = textContent.match(technicalTermsPattern) || [];
 
   results.details.technicalTerms = {
     count: technicalTerms.length,
     examples: technicalTerms.slice(0, 5),
-    score: technicalTerms.length >= 5 ? 7 : Math.min(technicalTerms.length * 1.4, 7),
+    score: technicalTerms.length >= 5 ? 5 : Math.min(technicalTerms.length * 1, 5),
     recommendation: technicalTerms.length >= 5
       ? '専門用語が適切に定義されています。'
       : '専門用語を使用し、適切な説明を加えることを推奨します。'
   };
 
-  // 深い知識の提示（コンテンツ深度）
+  // Expertise: 深い知識の提示 (10点)
   const paragraphs = $('p').length;
   const lists = $('ul, ol').length;
   const tables = $('table').length;
@@ -167,7 +167,7 @@ function analyzeEEAT(crawlData) {
     tables: tables,
     headings: headings,
     depthScore: contentDepth,
-    score: contentDepth >= 30 ? 8 : Math.min(Math.floor(contentDepth / 4), 8),
+    score: contentDepth >= 30 ? 10 : Math.min(Math.floor(contentDepth / 3), 10),
     recommendation: contentDepth >= 30
       ? '深い知識が体系的に提示されています。'
       : '段落、リスト、表等を活用し、より詳細な解説を推奨します。'
@@ -175,16 +175,17 @@ function analyzeEEAT(crawlData) {
 
   // 3. Authoritativeness（権威性）評価（25点）
 
-  // 外部引用・被リンク（クロール時には取得困難なため、代替指標を使用）
-  const externalLinks = (crawlData.links || []).filter(link => !link.isInternal);
-  const authoritativeDomains = externalLinks.filter(link =>
-    link.href.includes('.gov') ||
-    link.href.includes('.go.jp') ||
-    link.href.includes('.ac.jp') ||
-    link.href.includes('.edu') ||
-    link.href.includes('wikipedia.org') ||
-    link.href.includes('doi.org')
-  );
+  // Authority: 外部引用・被リンク (10点)
+  const externalLinks = (crawlData.links || []).filter(link => !link.isInternal && link.href);
+  const authoritativeDomains = externalLinks.filter(link => {
+    const href = typeof link.href === 'string' ? link.href : String(link.href || '');
+    return href.includes('.gov') ||
+      href.includes('.go.jp') ||
+      href.includes('.ac.jp') ||
+      href.includes('.edu') ||
+      href.includes('wikipedia.org') ||
+      href.includes('doi.org');
+  });
 
   results.details.externalCitations = {
     totalExternal: externalLinks.length,
@@ -198,7 +199,7 @@ function analyzeEEAT(crawlData) {
 
   results.rawData.authoritativeCitations = authoritativeDomains.map(l => l.href);
 
-  // メディア掲載実績
+  // Authority: メディア掲載実績 (10点)
   const mediaKeywords = ['掲載', 'メディア', '取材', '紹介された', '特集', '記事', 'インタビュー'];
   let mediaCount = 0;
   mediaKeywords.forEach(keyword => {
@@ -208,13 +209,13 @@ function analyzeEEAT(crawlData) {
   results.details.mediaExposure = {
     hasMediaKeywords: mediaCount > 0,
     keywordCount: mediaCount,
-    score: mediaCount >= 3 ? 7 : Math.min(mediaCount * 2, 7),
+    score: mediaCount >= 3 ? 10 : Math.min(mediaCount * 3, 9),
     recommendation: mediaCount >= 3
       ? 'メディア掲載の実績が記載されています。'
       : 'メディア掲載実績を記載することを推奨します。'
   };
 
-  // 業界での認知度（賞・認定）
+  // Authority: 業界での認知度 (5点)
   const recognitionKeywords = ['賞', 'アワード', '受賞', '認定', '承認', '公認', '登録', '選出'];
   let recognitionCount = 0;
   recognitionKeywords.forEach(keyword => {
@@ -224,7 +225,7 @@ function analyzeEEAT(crawlData) {
   results.details.industryRecognition = {
     hasRecognition: recognitionCount > 0,
     keywordCount: recognitionCount,
-    score: recognitionCount >= 2 ? 8 : Math.min(recognitionCount * 4, 8),
+    score: recognitionCount >= 2 ? 5 : Math.min(recognitionCount * 2, 4),
     recommendation: recognitionCount >= 2
       ? '業界での認知・受賞実績があります。'
       : '受賞歴や業界認定を記載することを推奨します。'
@@ -232,7 +233,7 @@ function analyzeEEAT(crawlData) {
 
   // 4. Trustworthiness（信頼性）評価（25点）
 
-  // 引用元の明示
+  // Trust: 引用元の明示 (10点)
   const citationKeywords = ['出典', '参考', '引用', 'source', 'via', 'から引用'];
   let citationCount = 0;
   citationKeywords.forEach(keyword => {
@@ -247,13 +248,13 @@ function analyzeEEAT(crawlData) {
     citationCount: citationCount,
     hasCiteTag: hasCiteTag,
     hasBlockquote: hasBlockquote,
-    score: (citationCount >= 3 || (hasCiteTag && hasBlockquote)) ? 10 : Math.min(citationCount * 2, 10),
+    score: (citationCount >= 3 || (hasCiteTag && hasBlockquote)) ? 10 : Math.min(citationCount * 3, 9),
     recommendation: citationCount >= 3
       ? '引用元が明確に記載されています。'
       : '全ての主張に出典リンクを追加することを推奨します。'
   };
 
-  // 連絡先情報
+  // Trust: 連絡先情報 (5点)
   const contactKeywords = ['お問い合わせ', '連絡先', 'お問合せ', 'コンタクト', 'contact'];
   const hasContactInfo = contactKeywords.some(keyword => textContent.includes(keyword));
   const hasMailtoLink = $('a[href^="mailto:"]').length > 0;
@@ -272,7 +273,7 @@ function analyzeEEAT(crawlData) {
       : '電話・メール等の複数の連絡方法を提供することを推奨します。'
   };
 
-  // プライバシーポリシー
+  // Trust: プライバシーポリシー (5点)
   const privacyKeywords = ['プライバシーポリシー', 'privacy policy', '個人情報保護方針', '個人情報'];
   const hasPrivacyPolicy = privacyKeywords.some(keyword =>
     textContent.toLowerCase().includes(keyword.toLowerCase())
@@ -280,24 +281,24 @@ function analyzeEEAT(crawlData) {
 
   results.details.privacyPolicy = {
     hasPolicy: hasPrivacyPolicy,
-    score: hasPrivacyPolicy ? 4 : 0,
+    score: hasPrivacyPolicy ? 5 : 0,
     recommendation: hasPrivacyPolicy
       ? 'プライバシーポリシーが確認できます。'
       : '詳細なプライバシーポリシーページの設置を推奨します。'
   };
 
-  // SSL証明書（HTTPS）
+  // Trust: SSL証明書 (5点)
   const isHttps = crawlData.url.startsWith('https://');
 
   results.details.sslCertificate = {
     isHttps: isHttps,
-    score: isHttps ? 3 : 0,
+    score: isHttps ? 5 : 0,
     recommendation: isHttps
       ? 'HTTPS通信が実装されています。'
       : 'SSL証明書を導入し、HTTPS化することを推奨します。'
   };
 
-  // 更新日時の表示
+  // 更新日時の表示（参考情報：スコアには含めない）
   const hasModifiedDate = $('meta[property="article:modified_time"]').length > 0 ||
     structuredData.some(d => d.dateModified);
 
@@ -309,30 +310,28 @@ function analyzeEEAT(crawlData) {
   results.details.updateDate = {
     hasModifiedMeta: hasModifiedDate,
     hasUpdateInfo: hasUpdateInfo,
-    score: (hasModifiedDate || hasUpdateInfo) ? 3 : 0,
+    score: (hasModifiedDate || hasUpdateInfo) ? 5 : 0, // 参考
     recommendation: (hasModifiedDate || hasUpdateInfo)
       ? '最終更新日が表示されています。'
       : '最終更新日時を明示することを推奨します。'
   };
 
   // 総合スコア計算
-  results.score = Math.round(
-    results.details.primaryInformation.score +
-    results.details.experienceDescription.score +
-    results.details.beforeAfter.score +
-    results.details.dateSpecification.score +
-    results.details.authorCredentials.score +
-    results.details.technicalTerms.score +
-    results.details.knowledgeDepth.score +
-    results.details.externalCitations.score +
-    results.details.mediaExposure.score +
-    results.details.industryRecognition.score +
-    results.details.citationClarity.score +
-    results.details.contactInformation.score +
-    results.details.privacyPolicy.score +
-    results.details.sslCertificate.score +
-    results.details.updateDate.score
-  );
+  results.score = 
+    results.details.primaryInformation.score + // 10
+    results.details.experienceDescription.score + // 10
+    results.details.beforeAfter.score + // 5
+    results.details.authorCredentials.score + // 10
+    results.details.technicalTerms.score + // 5
+    results.details.knowledgeDepth.score + // 10
+    results.details.externalCitations.score + // 10
+    results.details.mediaExposure.score + // 10
+    results.details.industryRecognition.score + // 5
+    results.details.citationClarity.score + // 10
+    results.details.contactInformation.score + // 5
+    results.details.privacyPolicy.score + // 5
+    results.details.sslCertificate.score; // 5
+    // 合計: 100点
 
   return results;
 }
