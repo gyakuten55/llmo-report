@@ -37,7 +37,7 @@ async function generatePDF(analysisResults, outputPath) {
     const page = await browser.newPage();
     const htmlContent = generateReportHTML(analysisResults);
     
-    await page.setContent(htmlContent, { waitUntil: ['load', 'networkidle0'] });
+    await page.setContent(htmlContent, { waitUntil: 'load' });
     await page.evaluateHandle('document.fonts.ready');
 
     await page.pdf({

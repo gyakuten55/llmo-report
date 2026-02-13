@@ -11,8 +11,8 @@ async function crawlWebsite(url, options = {}) {
   let browser;
 
   try {
-    // タイムアウト設定（デフォルト60秒）
-    const timeout = options.timeout || 60000;
+    // タイムアウト設定（デフォルト90秒）
+    const timeout = options.timeout || 90000;
 
     // ブラウザを起動
     browser = await puppeteer.launch({
@@ -31,9 +31,9 @@ async function crawlWebsite(url, options = {}) {
     // ページのパフォーマンスメトリクスを収集
     const startTime = Date.now();
 
-    // ページにアクセス（動的コンテンツの読み込みを待機）
+    // ページにアクセス（HTMLの読み込み完了を待機）
     const response = await page.goto(url, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: timeout
     });
 

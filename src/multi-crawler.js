@@ -136,7 +136,7 @@ async function crawlMultiplePages(options, progressCallback = null) {
           console.log(`[${completedCount + 1}/${totalUrls}] クロール: ${urlInfo.url}`);
 
           // クロール実行（リトライ付き）
-          let crawlData = await crawlWebsite(urlInfo.url, { timeout: 60000 });
+          let crawlData = await crawlWebsite(urlInfo.url, { timeout: 90000 });
 
           // タイムアウト時は1回だけリトライ
           if (!crawlData.success && crawlData.error.includes('timeout')) {
