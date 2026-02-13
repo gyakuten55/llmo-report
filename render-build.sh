@@ -2,15 +2,12 @@
 # exit on error
 set -o errexit
 
-# キャッシュディレクトリをホームディレクトリ配下に設定（Renderの標準的な場所）
-export PUPPETEER_CACHE_DIR=$HOME/.cache/puppeteer
-
-# npmインストール
+# 1. ライブラリをインストール
 npm install
 
-# Puppeteer 24が使用する最新のブラウザをインストール
-echo "Installing chrome-headless-shell for Puppeteer..."
-npx puppeteer browsers install chrome-headless-shell
+# 2. .puppeteerrc.cjs の設定に従い、node_modules 内にブラウザをインストール
+echo "Installing Chrome into node_modules..."
+npx puppeteer browsers install chrome
 
-# レポート保存用ディレクトリの作成
+# 3. レポート保存用ディレクトリの作成
 mkdir -p reports
