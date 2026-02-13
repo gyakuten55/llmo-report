@@ -4,6 +4,6 @@ const {join} = require('path');
  * @type {import("puppeteer").Configuration}
  */
 module.exports = {
-  // キャッシュの場所をプロジェクト内のディレクトリに固定
-  cacheDirectory: join(__dirname, '.cache', 'puppeteer'),
+  // node_modulesの中にキャッシュを置くことでRenderに確実に保持させる
+  cacheDirectory: join(__dirname, 'node_modules', '.puppeteer_cache'),
 };

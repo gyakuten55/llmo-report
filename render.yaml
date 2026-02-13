@@ -15,6 +15,4 @@ services:
         value: hero_aivo_2025_secret
       - key: PORT
         value: 10000
-      - key: PUPPETEER_CACHE_DIR
-        value: /opt/render/project/src/.cache/puppeteer
     autoDeploy: true
